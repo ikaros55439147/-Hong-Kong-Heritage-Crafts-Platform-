@@ -1,0 +1,11 @@
+{
+  "general": "發生錯誤，請稍後再試",
+  "network": "網路連線錯誤",
+  "notFound": "找不到頁面",
+  "unauthorized": "未授權訪問",
+  "forbidden": "禁止訪問",
+  "validation": "輸入資料有誤",
+  "server": "伺服器錯誤",
+  "timeout": "請求逾時",
+  "offline": "目前離線狀態"
+}

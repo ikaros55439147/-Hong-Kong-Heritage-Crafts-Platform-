@@ -1,0 +1,297 @@
+name: Continuous Deployment
+
+on:
+  push:
+    branches: [ main ]
+  workflow_run:
+    workflows: ["Continuous Integration"]
+    types:
+      - completed
+    branches: [ main ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event.workflow_run.conclusion == 'success'
+    environment: staging
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            type=raw,value=staging
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.prod
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Deploy to staging server
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            # Navigate to application directory
+            cd /opt/hk-heritage-crafts
+            
+            # Pull latest changes
+            git pull origin main
+            
+            # Update environment variables
+            cp .env.staging .env.production.local
+            
+            # Pull latest Docker image
+            docker login ${{ env.REGISTRY }} -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:staging
+            
+            # Update docker-compose with new image
+            sed -i 's|image: .*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:staging|' docker-compose.prod.yml
+            
+            # Run database migrations
+            docker-compose -f docker-compose.prod.yml run --rm app npx prisma migrate deploy
+            
+            # Restart services with zero downtime
+            docker-compose -f docker-compose.prod.yml up -d --no-deps app
+            
+            # Health check
+            sleep 30
+            curl -f http://localhost/api/health || exit 1
+            
+            # Clean up old images
+            docker image prune -f
+
+      - name: Run smoke tests
+        run: |
+          # Wait for deployment to be ready
+          sleep 60
+          
+          # Run basic smoke tests
+          curl -f https://staging.your-domain.com/api/health
+          curl -f https://staging.your-domain.com/
+          
+          # Add more smoke tests as needed
+
+      - name: Notify deployment status
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: '#deployments'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+          fields: repo,message,commit,author,action,eventName,ref,workflow
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            type=raw,value=production
+            type=raw,value=latest
+
+      - name: Build and push production image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.prod
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Create deployment backup
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          script: |
+            # Create backup before deployment
+            cd /opt/hk-heritage-crafts
+            ./scripts/backup.sh
+            
+            # Tag current deployment for rollback
+            docker tag $(docker-compose -f docker-compose.prod.yml images -q app) hk-heritage-crafts:rollback
+
+      - name: Deploy to production (Blue-Green)
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          script: |
+            cd /opt/hk-heritage-crafts
+            
+            # Pull latest changes
+            git pull origin main
+            
+            # Update environment variables
+            cp .env.production .env.production.local
+            
+            # Pull latest Docker image
+            docker login ${{ env.REGISTRY }} -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:production
+            
+            # Create blue-green deployment
+            cp docker-compose.prod.yml docker-compose.green.yml
+            sed -i 's|image: .*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:production|' docker-compose.green.yml
+            sed -i 's|3000:3000|3001:3000|' docker-compose.green.yml
+            sed -i 's|app:|app-green:|g' docker-compose.green.yml
+            
+            # Start green environment
+            docker-compose -f docker-compose.green.yml up -d app-green
+            
+            # Wait for green to be ready
+            sleep 60
+            
+            # Health check on green
+            curl -f http://localhost:3001/api/health
+            
+            # Switch traffic to green (update nginx upstream)
+            sed -i 's|server app:3000|server app-green:3000|' nginx/nginx.conf
+            docker-compose -f docker-compose.prod.yml exec nginx nginx -s reload
+            
+            # Wait and verify
+            sleep 30
+            curl -f https://your-domain.com/api/health
+            
+            # Stop blue environment
+            docker-compose -f docker-compose.prod.yml stop app
+            
+            # Update main compose file
+            sed -i 's|image: .*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:production|' docker-compose.prod.yml
+            
+            # Clean up
+            docker-compose -f docker-compose.green.yml down
+            rm docker-compose.green.yml
+            
+            # Restore nginx config
+            sed -i 's|server app-green:3000|server app:3000|' nginx/nginx.conf
+            
+            # Start updated blue environment
+            docker-compose -f docker-compose.prod.yml up -d app
+            docker-compose -f docker-compose.prod.yml exec nginx nginx -s reload
+
+      - name: Run production smoke tests
+        run: |
+          # Wait for deployment to stabilize
+          sleep 120
+          
+          # Comprehensive smoke tests
+          curl -f https://your-domain.com/api/health
+          curl -f https://your-domain.com/
+          curl -f https://your-domain.com/api/courses
+          curl -f https://your-domain.com/api/products
+          
+          # Test critical user flows
+          # Add more comprehensive tests
+
+      - name: Update monitoring and alerts
+        run: |
+          # Update deployment tracking
+          curl -X POST "${{ secrets.MONITORING_WEBHOOK }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "deployment": {
+                "version": "${{ github.sha }}",
+                "environment": "production",
+                "timestamp": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'",
+                "status": "success"
+              }
+            }'
+
+      - name: Notify successful deployment
+        if: success()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: success
+          channel: '#deployments'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+          fields: repo,message,commit,author,action,eventName,ref,workflow
+          text: "🚀 Production deployment successful! Version: ${{ github.sha }}"
+
+      - name: Rollback on failure
+        if: failure()
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          script: |
+            cd /opt/hk-heritage-crafts
+            
+            # Rollback to previous version
+            docker tag hk-heritage-crafts:rollback hk-heritage-crafts:current
+            sed -i 's|image: .*|image: hk-heritage-crafts:current|' docker-compose.prod.yml
+            
+            # Restart with rollback version
+            docker-compose -f docker-compose.prod.yml up -d app
+            
+            # Verify rollback
+            sleep 30
+            curl -f https://your-domain.com/api/health
+
+      - name: Notify rollback
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          channel: '#deployments'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+          fields: repo,message,commit,author,action,eventName,ref,workflow
+          text: "🔄 Production deployment failed and rolled back! Check logs for details."

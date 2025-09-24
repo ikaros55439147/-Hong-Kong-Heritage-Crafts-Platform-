@@ -1,0 +1,143 @@
+name: Deployment Notifications
+
+on:
+  workflow_run:
+    workflows: ["Continuous Deployment"]
+    types:
+      - completed
+
+jobs:
+  notify-deployment:
+    name: Send Deployment Notifications
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Get deployment status
+        id: deployment-status
+        run: |
+          if [ "${{ github.event.workflow_run.conclusion }}" == "success" ]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "emoji=🚀" >> $GITHUB_OUTPUT
+            echo "color=good" >> $GITHUB_OUTPUT
+          else
+            echo "status=failure" >> $GITHUB_OUTPUT
+            echo "emoji=❌" >> $GITHUB_OUTPUT
+            echo "color=danger" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Send Slack notification
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ steps.deployment-status.outputs.status }}
+          channel: '#deployments'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+          fields: repo,message,commit,author,action,eventName,ref,workflow
+          custom_payload: |
+            {
+              "attachments": [{
+                "color": "${{ steps.deployment-status.outputs.color }}",
+                "title": "${{ steps.deployment-status.outputs.emoji }} Deployment ${{ steps.deployment-status.outputs.status }}",
+                "fields": [
+                  {
+                    "title": "Repository",
+                    "value": "${{ github.repository }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Branch",
+                    "value": "${{ github.event.workflow_run.head_branch }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Commit",
+                    "value": "<https://github.com/${{ github.repository }}/commit/${{ github.event.workflow_run.head_sha }}|${{ github.event.workflow_run.head_sha }}>",
+                    "short": true
+                  },
+                  {
+                    "title": "Workflow",
+                    "value": "<https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}|View Details>",
+                    "short": true
+                  }
+                ],
+                "footer": "GitHub Actions",
+                "ts": ${{ github.event.workflow_run.updated_at }}
+              }]
+            }
+
+      - name: Send email notification
+        if: github.event.workflow_run.conclusion == 'failure'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.SMTP_SERVER }}
+          server_port: ${{ secrets.SMTP_PORT }}
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: "❌ Deployment Failed - HK Heritage Crafts Platform"
+          to: ${{ secrets.NOTIFICATION_EMAIL }}
+          from: "GitHub Actions <noreply@github.com>"
+          body: |
+            Deployment failed for HK Heritage Crafts Platform
+            
+            Repository: ${{ github.repository }}
+            Branch: ${{ github.event.workflow_run.head_branch }}
+            Commit: ${{ github.event.workflow_run.head_sha }}
+            
+            View details: https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}
+            
+            Please check the logs and take appropriate action.
+
+      - name: Create GitHub issue on failure
+        if: github.event.workflow_run.conclusion == 'failure'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const title = `🚨 Deployment Failed - ${new Date().toISOString().split('T')[0]}`
+            const body = `
+            ## Deployment Failure Report
+            
+            **Branch:** ${{ github.event.workflow_run.head_branch }}
+            **Commit:** ${{ github.event.workflow_run.head_sha }}
+            **Workflow Run:** https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}
+            
+            ### Action Required
+            - [ ] Investigate deployment failure
+            - [ ] Fix identified issues
+            - [ ] Verify fix in staging environment
+            - [ ] Re-deploy to production
+            
+            ### Checklist
+            - [ ] Database migrations successful
+            - [ ] Application health checks passing
+            - [ ] External services connectivity verified
+            - [ ] Rollback completed (if necessary)
+            
+            **Created by:** GitHub Actions
+            **Priority:** High
+            `
+            
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['deployment', 'bug', 'high-priority']
+            })
+
+      - name: Update deployment status
+        if: always()
+        run: |
+          # Update external monitoring systems
+          curl -X POST "${{ secrets.MONITORING_WEBHOOK }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "deployment": {
+                "repository": "${{ github.repository }}",
+                "branch": "${{ github.event.workflow_run.head_branch }}",
+                "commit": "${{ github.event.workflow_run.head_sha }}",
+                "status": "${{ steps.deployment-status.outputs.status }}",
+                "timestamp": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'",
+                "workflow_url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}"
+              }
+            }' || echo "Failed to update monitoring system"

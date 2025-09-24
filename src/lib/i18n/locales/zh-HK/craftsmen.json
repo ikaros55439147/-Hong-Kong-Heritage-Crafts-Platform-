@@ -1,0 +1,15 @@
+{
+  "title": "師傅",
+  "profile": "師傅檔案",
+  "specialties": "專長",
+  "experience": "經驗",
+  "location": "工作室位置",
+  "contact": "聯絡方式",
+  "courses": "開設課程",
+  "products": "作品展示",
+  "verified": "已認證",
+  "pending": "待認證",
+  "follow": "關注",
+  "unfollow": "取消關注",
+  "message": "發送訊息"
+}

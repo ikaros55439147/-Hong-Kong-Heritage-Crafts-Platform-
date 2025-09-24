@@ -1,0 +1,15 @@
+{
+  "title": "产品",
+  "search": "搜索产品",
+  "categories": "分类",
+  "price": "价格",
+  "addToCart": "加入购物车",
+  "buyNow": "立即购买",
+  "outOfStock": "缺货",
+  "inStock": "有库存",
+  "customizable": "可定制",
+  "description": "产品描述",
+  "specifications": "规格",
+  "reviews": "评价",
+  "relatedProducts": "相关产品"
+}

@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: hk-heritage-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: heritage_crafts
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - heritage-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: hk-heritage-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - heritage-network
+
+  adminer:
+    image: adminer:latest
+    container_name: hk-heritage-adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    networks:
+      - heritage-network
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  heritage-network:
+    driver: bridge

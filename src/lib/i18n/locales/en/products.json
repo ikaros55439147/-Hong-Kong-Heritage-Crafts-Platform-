@@ -1,0 +1,15 @@
+{
+  "title": "Products",
+  "search": "Search Products",
+  "categories": "Categories",
+  "price": "Price",
+  "addToCart": "Add to Cart",
+  "buyNow": "Buy Now",
+  "outOfStock": "Out of Stock",
+  "inStock": "In Stock",
+  "customizable": "Customizable",
+  "description": "Product Description",
+  "specifications": "Specifications",
+  "reviews": "Reviews",
+  "relatedProducts": "Related Products"
+}

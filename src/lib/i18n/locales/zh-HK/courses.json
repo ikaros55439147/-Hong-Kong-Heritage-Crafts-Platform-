@@ -1,0 +1,40 @@
+{
+  "title": "課程",
+  "search": {
+    "placeholder": "搜尋課程...",
+    "noResults": "找不到相關課程",
+    "filters": {
+      "category": "分類",
+      "level": "程度",
+      "duration": "時長",
+      "price": "價格"
+    }
+  },
+  "details": {
+    "instructor": "導師",
+    "duration": "時長",
+    "participants": "參與人數",
+    "price": "價格",
+    "location": "地點",
+    "materials": "所需材料",
+    "description": "課程描述",
+    "schedule": "時間安排"
+  },
+  "booking": {
+    "book": "立即預約",
+    "waitlist": "加入候補名單",
+    "full": "已滿額",
+    "cancelled": "已取消",
+    "completed": "已完成"
+  },
+  "categories": {
+    "woodworking": "木工",
+    "pottery": "陶藝",
+    "weaving": "編織",
+    "calligraphy": "書法",
+    "painting": "繪畫",
+    "sculpture": "雕塑",
+    "jewelry": "首飾製作",
+    "traditional_crafts": "傳統工藝"
+  }
+}

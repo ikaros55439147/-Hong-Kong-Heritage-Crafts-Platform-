@@ -1,0 +1,15 @@
+{
+  "title": "师傅",
+  "profile": "师傅档案",
+  "specialties": "专长",
+  "experience": "经验",
+  "location": "工作室位置",
+  "contact": "联系方式",
+  "courses": "开设课程",
+  "products": "作品展示",
+  "verified": "已认证",
+  "pending": "待认证",
+  "follow": "关注",
+  "unfollow": "取消关注",
+  "message": "发送消息"
+}

@@ -1,0 +1,40 @@
+{
+  "title": "课程",
+  "search": {
+    "placeholder": "搜索课程...",
+    "noResults": "找不到相关课程",
+    "filters": {
+      "category": "分类",
+      "level": "程度",
+      "duration": "时长",
+      "price": "价格"
+    }
+  },
+  "details": {
+    "instructor": "导师",
+    "duration": "时长",
+    "participants": "参与人数",
+    "price": "价格",
+    "location": "地点",
+    "materials": "所需材料",
+    "description": "课程描述",
+    "schedule": "时间安排"
+  },
+  "booking": {
+    "book": "立即预约",
+    "waitlist": "加入候补名单",
+    "full": "已满额",
+    "cancelled": "已取消",
+    "completed": "已完成"
+  },
+  "categories": {
+    "woodworking": "木工",
+    "pottery": "陶艺",
+    "weaving": "编织",
+    "calligraphy": "书法",
+    "painting": "绘画",
+    "sculpture": "雕塑",
+    "jewelry": "首饰制作",
+    "traditional_crafts": "传统工艺"
+  }
+}

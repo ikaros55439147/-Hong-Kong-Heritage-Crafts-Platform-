@@ -1,0 +1,40 @@
+{
+  "title": "Courses",
+  "search": {
+    "placeholder": "Search courses...",
+    "noResults": "No courses found",
+    "filters": {
+      "category": "Category",
+      "level": "Level",
+      "duration": "Duration",
+      "price": "Price"
+    }
+  },
+  "details": {
+    "instructor": "Instructor",
+    "duration": "Duration",
+    "participants": "Participants",
+    "price": "Price",
+    "location": "Location",
+    "materials": "Required Materials",
+    "description": "Course Description",
+    "schedule": "Schedule"
+  },
+  "booking": {
+    "book": "Book Now",
+    "waitlist": "Join Waitlist",
+    "full": "Fully Booked",
+    "cancelled": "Cancelled",
+    "completed": "Completed"
+  },
+  "categories": {
+    "woodworking": "Woodworking",
+    "pottery": "Pottery",
+    "weaving": "Weaving",
+    "calligraphy": "Calligraphy",
+    "painting": "Painting",
+    "sculpture": "Sculpture",
+    "jewelry": "Jewelry Making",
+    "traditional_crafts": "Traditional Crafts"
+  }
+}

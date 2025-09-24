@@ -1,0 +1,11 @@
+{
+  "general": "An error occurred, please try again later",
+  "network": "Network connection error",
+  "notFound": "Page not found",
+  "unauthorized": "Unauthorized access",
+  "forbidden": "Access forbidden",
+  "validation": "Invalid input data",
+  "server": "Server error",
+  "timeout": "Request timeout",
+  "offline": "Currently offline"
+}

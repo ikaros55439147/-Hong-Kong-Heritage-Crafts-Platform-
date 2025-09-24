@@ -1,0 +1,56 @@
+{
+  "navigation": {
+    "home": "首頁",
+    "courses": "課程",
+    "craftsmen": "師傅",
+    "products": "產品",
+    "about": "關於我們",
+    "contact": "聯絡我們",
+    "login": "登入",
+    "register": "註冊",
+    "profile": "個人資料",
+    "logout": "登出"
+  },
+  "common": {
+    "search": "搜尋",
+    "filter": "篩選",
+    "sort": "排序",
+    "save": "儲存",
+    "cancel": "取消",
+    "delete": "刪除",
+    "edit": "編輯",
+    "view": "查看",
+    "back": "返回",
+    "next": "下一步",
+    "previous": "上一步",
+    "submit": "提交",
+    "loading": "載入中...",
+    "error": "錯誤",
+    "success": "成功",
+    "warning": "警告",
+    "info": "資訊",
+    "confirm": "確認",
+    "yes": "是",
+    "no": "否"
+  },
+  "language": {
+    "switch": "切換語言",
+    "current": "當前語言",
+    "zh-HK": "繁體中文",
+    "zh-CN": "简体中文", 
+    "en": "English"
+  },
+  "time": {
+    "now": "剛剛",
+    "minutesAgo": "{{count}} 分鐘前",
+    "hoursAgo": "{{count}} 小時前",
+    "daysAgo": "{{count}} 天前",
+    "weeksAgo": "{{count}} 週前",
+    "monthsAgo": "{{count}} 個月前",
+    "yearsAgo": "{{count}} 年前"
+  },
+  "multilingual": {
+    "contentNotAvailableInLanguage": "此內容暫未提供{{language}}版本，正在顯示{{fallbackLanguage}}版本",
+    "noContentAvailable": "暫無內容"
+  }
+}

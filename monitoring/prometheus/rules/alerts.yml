@@ -1,0 +1,134 @@
+groups:
+  - name: hk-heritage-platform-alerts
+    rules:
+      # 應用程式健康狀態告警
+      - alert: ApplicationDown
+        expr: up{job="hk-heritage-app"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "香港弱勢行業傳承平台應用程式停止運行"
+          description: "應用程式已停止運行超過1分鐘"
+
+      # 高錯誤率告警
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "高錯誤率檢測"
+          description: "5xx錯誤率超過10%，持續5分鐘"
+
+      # 響應時間過長告警
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "響應時間過長"
+          description: "95%的請求響應時間超過2秒"
+
+      # 數據庫連接告警
+      - alert: DatabaseConnectionHigh
+        expr: pg_stat_activity_count > 80
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "數據庫連接數過高"
+          description: "PostgreSQL活躍連接數超過80"
+
+      # Redis記憶體使用告警
+      - alert: RedisMemoryHigh
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis記憶體使用率過高"
+          description: "Redis記憶體使用率超過80%"
+
+      # 系統CPU使用率告警
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "系統CPU使用率過高"
+          description: "CPU使用率超過80%，持續5分鐘"
+
+      # 系統記憶體使用告警
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "系統記憶體使用率過高"
+          description: "記憶體使用率超過85%"
+
+      # 磁碟空間告警
+      - alert: DiskSpaceLow
+        expr: (1 - (node_filesystem_avail_bytes / node_filesystem_size_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "磁碟空間不足"
+          description: "磁碟使用率超過85%"
+
+      # 容器重啟告警
+      - alert: ContainerRestarting
+        expr: increase(container_start_time_seconds[1h]) > 3
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "容器頻繁重啟"
+          description: "容器在1小時內重啟超過3次"
+
+      # SSL證書過期告警
+      - alert: SSLCertificateExpiring
+        expr: probe_ssl_earliest_cert_expiry - time() < 86400 * 30
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "SSL證書即將過期"
+          description: "SSL證書將在30天內過期"
+
+  - name: business-metrics-alerts
+    rules:
+      # 用戶註冊異常告警
+      - alert: LowUserRegistration
+        expr: increase(user_registrations_total[1h]) < 1
+        for: 2h
+        labels:
+          severity: info
+        annotations:
+          summary: "用戶註冊數量異常低"
+          description: "過去2小時內用戶註冊數量少於1個"
+
+      # 訂單處理異常告警
+      - alert: HighOrderFailureRate
+        expr: rate(orders_failed_total[5m]) / rate(orders_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "訂單失敗率過高"
+          description: "訂單失敗率超過5%"
+
+      # 支付處理異常告警
+      - alert: PaymentProcessingIssues
+        expr: rate(payment_failures_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "支付處理異常"
+          description: "支付失敗率異常高"
